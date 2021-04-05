@@ -1,8 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
+from functools import reduce
 import pandas as pd
 import sys 
+from fractions import Fraction
+import datetime
+import math
+
+def dec2frac(n):
+    return str(Fraction(n).limit_denominator())
 
 def intersect(L1, L2, verbose = True): # L1 coefficients of ax + by = c as a tuple (a,b,c)
     flag = [False]*2
@@ -21,11 +28,13 @@ def intersect(L1, L2, verbose = True): # L1 coefficients of ax + by = c as a tup
     else:
         x = (B2*C1 - B1*C2)/det + 0 # to make -0 -> +0
         if not x.is_integer():
-            x1 = format(x, '.2f') #limit decimal to 2 places
+            x1 = dec2frac(x)
+            # x1 = format(x, '.2f') #limit decimal to 2 places
             flag[0] = True
         y = (A1*C2 - A2*C1)/det + 0 
         if not y.is_integer():
-            y1 = format(y, '.2f')
+            y1 = dec2frac(y)
+            # y1 = format(y, '.2f')
             flag[1] = True
         if all(f == False for f in flag):
             # x and y both whole numbers
@@ -39,7 +48,7 @@ def intersect(L1, L2, verbose = True): # L1 coefficients of ax + by = c as a tup
         
         text = coord # The text of the annotation. 
         xy = (x,y) # The point (x,y) to annotate.
-        xytext = (x+0.2,y+0.2) # The position (x,y) to place the text at.
+        xytext = (x,y) # The position (x,y) to place the text at.
         print('legend on graph: {}'.format(text))
         return text, xy, xytext
 
@@ -76,18 +85,32 @@ def plot_lines(a,b,c,x):
     return y,eqn
 
 
-def plot_colour(lines,signs,filename='1.png',ub=-5,lb=5):
+def plot_colour(lines,signs,filename='1.png'):
     # lines: [(a1,b1,c1), (a2,b2,c2)...] #ax + by = c
     # ub,lb: upper bound and lower bound for x axis
-    # signs : 0 => greater than ; 1 = > less than, -1 => equal to
-    X = np.array(range(ub,lb))
-    
+    # signs : 1 => greater than ; -1 = > less than, 0 => equal to
     fig, ax = plt.subplots(figsize=(10,12))
+
+    lines.append([0,1,0])
+    lines.append([1,0,0])
+    all_combinations = list(itertools.combinations(lines, 2))
+    for i in all_combinations:
+        text, xy , xytext = intersect(i[0],i[1], verbose = False)
+       
+        if text != xy and xy != xytext and text != -1:
+            ub = math.ceil(findUpperBound(xy))
+            lb = math.ceil(findLowerBound(xy))
+            ax.annotate( xy = xy, xytext = xytext, s = text)
+
+
+    print("(lb,ub): {lb}, {ub} ".format(lb=lb, ub=ub))
+
+    X = np.linspace(-10000, 10000, 10)
     
-    d = np.linspace(-2,lb,300)
-    x,y = np.meshgrid(d,d)
     
-    plt.axis([ub, lb, ub, lb])
+    lines = lines[:-2]
+    
+    plt.axis([lb, ub, lb, ub]) # [xmin, xmax, ymin, ymax]
  
     for [a,b,c] in lines:
         Y, e = plot_lines(a,b,c,X) #y-line, e-equation
@@ -97,39 +120,38 @@ def plot_colour(lines,signs,filename='1.png',ub=-5,lb=5):
   
         else:
             ax.plot(X,Y,label=e)
-    
+
     list_ = []
+  # https://stackoverflow.com/questions/57017444/how-to-visualize-feasible-region-for-linear-programming-with-arbitrary-inequali
+    d = np.linspace(lb,ub,300)
+    x,y = np.meshgrid(d,d)
     for i in range(len(signs)):
         a,b,c = lines[i]
-        if signs[i] == 1: # 1 => less than
+        if signs[i] == -1: # -1 => less than
             constraint = (b*y <= -a*x + c)
             print(f'{b}*y <= {-a}*x + {c}')
-        elif signs[i] == 0:
+        elif signs[i] == 1:
             constraint = (b*y >= -a*x + c)
             print(f'{b}*y >= {-a}*x + {c}')
-        elif signs[i] == -1:
+        elif signs[i] == 0:
             constraint = (b*y == -a*x + c)
             print(f'{b}*y = {-a}*x + {c}')
                   
         list_.append(constraint)
    
-#     res = reduce(lambda x, y: x & y, list_) 
+    res = reduce(lambda x, y: x & y, list_) 
     
+    
+    print(len(res))
+    print(np.nonzero(res.astype(int)))
+    print(x.min(),x.max(),y.min(),y.max())
+    plt.imshow(res.astype(int), extent=(x.min(),x.max(),y.min(),y.max()),origin="lower", cmap="Purples", alpha = 0.3)
+
     ax.spines['left'].set_position('zero')
     ax.spines['right'].set_color('none')
     ax.spines['bottom'].set_position('zero')
     ax.spines['top'].set_color('none')
     
-    lines.append([0,1,0])
-    lines.append([1,0,0])
-    all_combinations = list(itertools.combinations(lines, 2))
-    for i in all_combinations:
-        text, xy , xytext = intersect(i[0],i[1], verbose = False)
-
-        if text != xy and xy != xytext and text != -1:
-            ax.annotate( xy = xy, xytext = xytext, s = text)
-   
-#     plt.imshow(res.astype(int), extent=(x.min(),x.max(),y.min(),y.max()),origin="lower", cmap="Purples", alpha = 0.3)
     plt.xlabel('x1')
     plt.ylabel('x2')
     plt.grid(linestyle='dashdot')
@@ -139,18 +161,40 @@ def plot_colour(lines,signs,filename='1.png',ub=-5,lb=5):
     plt.savefig(filename)
     
 
-if len(sys.argv) != 3:
+def findUpperBound(xy):
+    global maximum
+    x, y = xy
+    if x > maximum:
+        maximum = x
+    if y > maximum:
+        maximum = y
+    return maximum
+
+def findLowerBound(xy):
+    global minimum
+    x, y = xy
+    if x < minimum:
+        minimum = x
+    if y < minimum:
+        minimum = y
+    return minimum
+
+if len(sys.argv) != 2:
 	raise ValueError("filenames missing")
 
-filename = sys.argv[1]
-graphname = sys.argv[2]
+filename = sys.argv[1] #csv file
+now = str(datetime.datetime.now())
+graphname = "graph_{}.{}".format(now,'png').replace(':', '.')
+print(graphname)
 graph_points = pd.read_csv(filename)
 points = graph_points.iloc[:, :-1].values.tolist()
 inequalities = graph_points.iloc[:,-1].values.tolist()
 print(points)
+maximum = -999999
+minimum = 999999
 # l1 = [4,5,100]
 # l2 =[6,3,120]
 # l3 =[1,0,40]
 # l4 = [0,1,30]
 # l5 = [4,10,160]
-plot_colour(points,inequalities,filename=graphname,lb=5,ub=-5)
+plot_colour(points,inequalities, filename=graphname)
