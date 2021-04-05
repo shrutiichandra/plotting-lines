@@ -10,7 +10,7 @@ x,y,c,inequalities <br/>
 x - coefficient of x variable  <br/>
 y - coefficient of y variable <br/>
 c - constant <br/>
-inequalities - -1,0,1 depending on <,> or = [signs : 0 => greater than ; 1 => less than, -1 => equal to] <br/>
+inequalities - -1,0,1 depending on <,> or = [signs : 1 => greater than ; -1 = > less than, 0 => equal to] <br/>
 <br/>
 e.g <br/>
 <br/>

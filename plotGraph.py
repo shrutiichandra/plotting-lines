@@ -90,7 +90,8 @@ def plot_colour(lines,signs,filename='1.png'):
     # ub,lb: upper bound and lower bound for x axis
     # signs : 1 => greater than ; -1 = > less than, 0 => equal to
     fig, ax = plt.subplots(figsize=(10,12))
-
+    ub = 5
+    lb = 0
     lines.append([0,1,0])
     lines.append([1,0,0])
     all_combinations = list(itertools.combinations(lines, 2))
@@ -100,7 +101,7 @@ def plot_colour(lines,signs,filename='1.png'):
         if text != xy and xy != xytext and text != -1:
             ub = math.ceil(findUpperBound(xy))
             lb = math.ceil(findLowerBound(xy))
-            ax.annotate( xy = xy, xytext = xytext, s = text)
+            ax.annotate( xy = xy, xytext = (-15, 25), textcoords='offset points')
 
 
     print("(lb,ub): {lb}, {ub} ".format(lb=lb, ub=ub))
