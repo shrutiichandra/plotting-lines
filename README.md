@@ -1,6 +1,6 @@
 -to run plotGraph.py
 in cmd, <br/>
-python plotGraph.py <csv_file> <name_of_graph_to_be_generated> <br/>
+python plotGraph.py <csv_file><br/>
 <br/>
 
 format of csv file: <br/>
